@@ -1,3 +1,5 @@
+## Dplyr translation exercice
+
 # Source
 # https://swcarpentry.github.io/r-novice-gapminder/13-dplyr/index.html
 
@@ -9,38 +11,44 @@ https://github.com/swcarpentry/r-novice-gapminder,
 10.5281/zenodo.57520.
 =#
 
-# Import data
-# Gapminder package in R
 using CSV, DataFrames
 using RCall
 using Statistics
 
+## Import data
+# Load data exported from gapminder package in R
 gapminder = CSV.read("gapminder.txt")
-
-# $rnorm(100,42,2)
 
 # Send Julia element to R
 @rput gapminder
 
-## Filter data by rows
-R"""
-mean(gapminder[gapminder$continent == "Africa", "gdpPercap"])
-"""
+## Filter data by rows using base syntax
+# R code
+begin
+    R"""
+    mean(gapminder[gapminder$continent == "Africa", "gdpPercap"])
+    """
+end
+# Julia translation
 # Need to load Statistics.jl to use mean function
 mean(gapminder[gapminder.continent .== "Africa", :gdpPercap])
 
-
-R"""
-mean(gapminder[gapminder$continent == "Americas", "gdpPercap"])
-"""
-
+begin
+    R"""
+    mean(gapminder[gapminder$continent == "Americas", "gdpPercap"])
+    """
+end
 mean(gapminder[gapminder.continent .== "Americas", :gdpPercap])
 
-R"""
-mean(gapminder[gapminder$continent == "Asia", "gdpPercap"])
-"""
-
+begin
+    R"""
+    mean(gapminder[gapminder$continent == "Asia", "gdpPercap"])
+    """
+end
 mean(gapminder[gapminder.continent .== "Asia", :gdpPercap])
+
+
+
 
 
 
