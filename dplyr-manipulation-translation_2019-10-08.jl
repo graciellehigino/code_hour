@@ -68,12 +68,27 @@ begin
     year_country_gdp <- gapminder %>% select(year, country, gdpPercap)
     """
 end
+# Simple piping example
+gapminder |> nrow
+# Julia piping translation, requires anonymous function (x -> ...)
 year_country_gdp = gapminder |> x -> select(x, [:year, :country, :gdpPercap])
+
 # Pipe.jl offers an alternative syntax
 #=
 using Pipe
-@pipe year_country_gdp <- gapminder |> select(_, [:year, :country, :gdpPercap])
+@pipe year_country_gdp = gapminder |> select(_, [:year, :country, :gdpPercap])
 =#
+
+## Example where piping in Julia might be relevant:
+# Applying changes in column names
+newnames = names(gapminder) .|> # . is needed to broadcast piping on array elements
+    string .|> # has to be converted to string first
+    uppercasefirst .|> # convert first letter to uppercase
+    Symbol # has to be converted back to Symbol
+# Alternative 1 line call
+newnames = Symbol.(uppercasefirst.(string.(names(gapminder)))) # maybe too long and confusing
+# Change column names (temporary)
+rename(gapminder, names(gapminder) .=> newnames)
 
 ## Using `filter()`
 begin
@@ -107,13 +122,14 @@ year_country_lifeExp_africa = gapminder |>
     x -> filter(y -> y.continent == "Africa", x) |>
     x -> select(x, [:lifeExp, :country, :year])
 
-# Using `group_by` and `summarize`
+## Using `group_by` and `summarize`
 begin
     R"""
     str(gapminder)
     """
 end
 describe(gapminder)
+# no exact translation for `str()`
 
 begin
     R"""
@@ -121,23 +137,29 @@ begin
     """
 end
 groupby(gapminder, :continent)
-# no exact translation for `str()`
 
 begin
     R"""
     gdp_bycontinents <- gapminder %>%
-    group_by(continent) %>%
-    summarize(mean_gdpPercap = mean(gdpPercap))
+        group_by(continent) %>%
+        summarize(mean_gdpPercap = mean(gdpPercap))
     """
 end
 # Exact translation
 gdp_bycontinents = gapminder |>
     x -> groupby(x, :continent) |>
-    x -> [mean(y.gdpPercap) for y in x]
-# Julia-esque translaton 1
-by(gapminder, :continent, mean_gdpPercap = :gdpPercap => mean)
+    x -> [mean(group.gdpPercap) for group in x] # inline for-loop
+# Same with long format for-loop
+for group in groupby(gapminder, :continent)
+    result = mean(group.gdpPercap)
+    println(result)
+end
+# Julia-esque translation
+gdp_bycontinents = by(gapminder, :continent, :gdpPercap => mean)
+# Additionnal `sort` example
+sort(by(gapminder, :continent, nrow), :x1)
 
-# Challenge 2
+## Challenge 2
 begin
     R"""
     lifeExp_bycountry <- gapminder %>%
@@ -149,10 +171,11 @@ begin
         filter(mean_lifeExp == min(mean_lifeExp) | mean_lifeExp == max(mean_lifeExp))
     """
 end
+# Julia translation
 lifeExp_bycountry = by(gapminder, :country, mean_lifeExp = :lifeExp => mean)
 sort(lifeExp_bycountry, :mean_lifeExp)[[1,end],:]
-#
 
+## Using `group_by` and `summarize` on multiple columns
 begin
     R"""
     gdp_bycontinents_byyear <- gapminder %>%
