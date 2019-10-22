@@ -201,3 +201,97 @@ gdp_pop_bycontinents_byyear = by(gapminder, [:continent, :year], [:gdpPercap, :p
                                           mean_pop = mean(x.pop),
                                           sd_pop = std(x.pop)));
 sort(gdp_pop_bycontinents_byyear, :continent)
+
+
+## count() and n()
+
+begin
+    R"""
+    gapminder %>%
+        filter(year == 2002) %>%
+        count(continent, sort = TRUE)
+    """
+end
+
+gapminder |>
+    x -> filter(y -> y.year == 2002, x) |>
+    x -> by(x, :continent,
+    count = :continent => length) |>
+    x -> sort(x, :count, rev = true)
+
+sort(by(gapminder[gapminder.year .== 2002,:], :continent, count = :continent => length), :count, rev = true)
+
+
+begin
+    R"""
+    gapminder %>%
+        group_by(continent) %>%
+        summarize(se_le = sd(lifeExp)/sqrt(n()))
+    """
+end
+
+gapminder |>
+    x -> by(x, :continent, se_le = [:continent, :lifeExp] =>
+                            x -> std(x.lifeExp)/sqrt(length(x.continent)), sort = true)
+
+begin
+    R"""
+    gapminder %>%
+        group_by(continent) %>%
+        summarize(
+          mean_le = mean(lifeExp),
+          min_le = min(lifeExp),
+          max_le = max(lifeExp),
+          se_le = sd(lifeExp)/sqrt(n()))
+    """
+end
+
+
+
+## Using mutate()
+begin
+    R"""
+    gdp_pop_bycontinents_byyear <- gapminder %>%
+        mutate(gdp_billion = gdpPercap*pop/10^9) %>%
+        group_by(continent,year) %>%
+        summarize(mean_gdpPercap = mean(gdpPercap),
+                  sd_gdpPercap = sd(gdpPercap),
+                  mean_pop = mean(pop),
+                  sd_pop = sd(pop),
+                  mean_gdp_billion = mean(gdp_billion),
+                  sd_gdp_billion = sd(gdp_billion))
+    """
+end
+
+gapminder.gdp_billion = gapminder.gdpPercap .* gapminder.pop ./ 10^9
+
+
+insertcols!(gapminder, ncol(gapminder)+1, gdp_billion15 = gapminder.gdpPercap .* gapminder.pop ./ 10^9)
+insertcols!(gapminder, ncol(gapminder)+1, gdp_billion17 = [:gdpPercap, :pop] =>
+                                            x -> x.gdpPercap * x.pop / 10^9)
+
+## Connect mutate with logical filtering: ifelse
+
+begin
+    ## keeping all data but "filtering" after a certain condition
+    # calculate GDP only for people with a life expectation above 25
+    gdp_pop_bycontinents_byyear_above25 <- gapminder %>%
+        mutate(gdp_billion = ifelse(lifeExp > 25, gdpPercap * pop / 10^9, NA)) %>%
+        group_by(continent, year) %>%
+        summarize(mean_gdpPercap = mean(gdpPercap),
+                  sd_gdpPercap = sd(gdpPercap),
+                  mean_pop = mean(pop),
+                  sd_pop = sd(pop),
+                  mean_gdp_billion = mean(gdp_billion),
+                  sd_gdp_billion = sd(gdp_billion))
+end
+
+begin
+    ## updating only if certain condition is fullfilled
+    # for life expectations above 40 years, the gpd to be expected in the future is scaled
+    gdp_future_bycontinents_byyear_high_lifeExp <- gapminder %>%
+        mutate(gdp_futureExpectation = ifelse(lifeExp > 40, gdpPercap * 1.5, gdpPercap)) %>%
+        group_by(continent, year) %>%
+        summarize(mean_gdpPercap = mean(gdpPercap),
+                  mean_gdpPercap_expected = mean(gdp_futureExpectation))
+end
