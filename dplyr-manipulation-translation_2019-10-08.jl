@@ -273,6 +273,7 @@ insertcols!(gapminder, ncol(gapminder)+1, gdp_billion17 = [:gdpPercap, :pop] =>
 ## Connect mutate with logical filtering: ifelse
 
 begin
+    R"""
     ## keeping all data but "filtering" after a certain condition
     # calculate GDP only for people with a life expectation above 25
     gdp_pop_bycontinents_byyear_above25 <- gapminder %>%
@@ -284,14 +285,51 @@ begin
                   sd_pop = sd(pop),
                   mean_gdp_billion = mean(gdp_billion),
                   sd_gdp_billion = sd(gdp_billion))
+    """
 end
 
+gdp_pop_bycontinents_byyear_above25 = insertcols!(gapminder, ncol(gapminder) + 1, gdp_billion = ifelse.(gapminder.lifeExp .> 25, gapminder.gdpPercap .* gapminder.pop ./ 10^9, missing)) |>
+        x -> by(x, [:continent, :year], [:gdpPercap, :pop, :gdp_billion] =>
+             x -> (mean_gdpPercap = mean(x.gdpPercap),
+                   sd_gdpPercap = std(x.gdpPercap),
+                   mean_pop = mean(x.pop),
+                   sd_pop = std(x.pop),
+                   mean_gdp_billion = mean(x.gdp_billion),
+                   sd_gdp_billion = std(x.gdp_billion)))
+
+# Probably a bit less confusing
+gapminder.gdp_billion = ifelse.(gapminder.lifeExp .> 25, gapminder.gdpPercap .* gapminder.pop ./ 10^9, missing)
+gdp_pop_bycontinents_byyear_above25 = by(gapminder, [:continent, :year], [:gdpPercap, :pop, :gdp_billion] =>
+     x -> (mean_gdpPercap = mean(x.gdpPercap),
+           sd_gdpPercap = std(x.gdpPercap),
+           mean_pop = mean(x.pop),
+           sd_pop = std(x.pop),
+           mean_gdp_billion = mean(x.gdp_billion),
+           sd_gdp_billion = std(x.gdp_billion)))
+
+# Alternative to ifelse: ternary operator ?:
+@time map(x -> x.lifeExp > 25 ? x.gdpPercap .* x.pop ./ 10^9 : missing, eachrow(gapminder));
+@time ifelse.(gapminder.lifeExp .> 25, gapminder.gdpPercap .* gapminder.pop ./ 10^9, missing);
+# Much less efficient in this case because of map() and eachrow(), but can be useful in other situations
+# Example: print smallest variable
+a = 1
+b = 2
+@time a < b ? "a" : "b"
+@time ifelse(a < b, "a", "b")
+
+## updating only if certain condition is fullfilled
+# for life expectations above 40 years, the gpd to be expected in the future is scaled
 begin
-    ## updating only if certain condition is fullfilled
-    # for life expectations above 40 years, the gpd to be expected in the future is scaled
+    R"""
     gdp_future_bycontinents_byyear_high_lifeExp <- gapminder %>%
         mutate(gdp_futureExpectation = ifelse(lifeExp > 40, gdpPercap * 1.5, gdpPercap)) %>%
         group_by(continent, year) %>%
         summarize(mean_gdpPercap = mean(gdpPercap),
-                  mean_gdpPercap_expected = mean(gdp_futureExpectation))
+                mean_gdpPercap_expected = mean(gdp_futureExpectation))
+    """
 end
+
+gapminder.gdp_futureExpectation = ifelse.(gapminder.lifeExp .> 40, gapminder.gdpPercap .* 1.5, gapminder.gdpPercap)
+gdp_future_bycontinents_byyear_high_lifeExp = by(gapminder, [:continent, :year], [:gdpPercap, :gdp_futureExpectation] =>
+     x -> (mean_gdpPercap = mean(x.gdpPercap),
+           mean_gdpPercap_expected = mean(x.gdp_futureExpectation)))
