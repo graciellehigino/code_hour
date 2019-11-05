@@ -333,3 +333,32 @@ gapminder.gdp_futureExpectation = ifelse.(gapminder.lifeExp .> 40, gapminder.gdp
 gdp_future_bycontinents_byyear_high_lifeExp = by(gapminder, [:continent, :year], [:gdpPercap, :gdp_futureExpectation] =>
      x -> (mean_gdpPercap = mean(x.gdpPercap),
            mean_gdpPercap_expected = mean(x.gdp_futureExpectation)))
+
+
+
+#### Combining dplyr and ggplot2
+
+begin
+    R"""
+    library("ggplot2")
+    """
+end
+
+begin
+    R"""
+# Get the start letter of each country
+starts.with <- substr(gapminder$country, start = 1, stop = 1)
+# Filter countries that start with "A" or "Z"
+az.countries <- gapminder[starts.with %in% c("A", "Z"), ]
+# Make the plot
+ggplot(data = az.countries, aes(x = year, y = lifeExp, color = continent)) +
+  geom_line() + facet_wrap( ~ country)
+  """
+end
+
+using Gadfly
+
+starts_with = first.(gapminder.country)
+az.countries = gapminder[in(string.(starts_with), ["A", "Z"])]
+
+in.(string.(starts_with), ["A", "Z"])
