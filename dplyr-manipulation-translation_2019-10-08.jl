@@ -358,7 +358,10 @@ end
 
 using Gadfly
 
-starts_with = first.(gapminder.country)
-az.countries = gapminder[in(string.(starts_with), ["A", "Z"])]
-
-in.(string.(starts_with), ["A", "Z"])
+# Option 1
+starts_with = string.(first.(gapminder.country))
+az_countries = gapminder[map(x -> in(x, ["A", "Z"]), starts_with), :]
+az_countries = gapminder[[in(s, ["A", "Z"]) for s in starts_with], :]
+# Option 2 with regular expression
+az_countries = gapminder[startswith.(gapminder.country, r"A|Z"), :]
+az_countries = filter(x -> startswith(x.country, r"A|Z"), gapminder)
