@@ -76,7 +76,7 @@ year_country_gdp = gapminder |> x -> select(x, [:year, :country, :gdpPercap])
 # Pipe.jl offers an alternative syntax
 #=
 using Pipe
-@pipe year_country_gdp = gapminder |> select(_, [:year, :country, :gdpPercap])
+year_country_gdp = @pipe gapminder |> select(_, [:year, :country, :gdpPercap])
 =#
 
 ## Example where piping in Julia might be relevant:
@@ -102,6 +102,9 @@ end
 year_country_gdp_euro = gapminder |>
     x -> filter(y -> y.continent == "Europe", x) |>
     x -> select(x, [:year, :country, :gdpPercap])
+year_country_gdp_euro = @pipe gapminder |>
+    filter(y -> y.continent == "Europe", _) |>
+    select(_, [:year, :country, :gdpPercap])
 # Julia-esque translation
 year_country_gdp_euro = filter(y -> y.continent == "Europe", gapminder)
 # OR
@@ -346,13 +349,13 @@ end
 
 begin
     R"""
-# Get the start letter of each country
-starts.with <- substr(gapminder$country, start = 1, stop = 1)
-# Filter countries that start with "A" or "Z"
-az.countries <- gapminder[starts.with %in% c("A", "Z"), ]
-# Make the plot
-ggplot(data = az.countries, aes(x = year, y = lifeExp, color = continent)) +
-  geom_line() + facet_wrap( ~ country)
+    # Get the start letter of each country
+    starts.with <- substr(gapminder$country, start = 1, stop = 1)
+    # Filter countries that start with "A" or "Z"
+    az.countries <- gapminder[starts.with %in% c("A", "Z"), ]
+    # Make the plot
+    ggplot(data = az.countries, aes(x = year, y = lifeExp, color = continent)) +
+        geom_line() + facet_wrap( ~ country)
   """
 end
 
